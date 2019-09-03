@@ -45,6 +45,8 @@ def handle_client_receive(client_socket, client_address):
 			disconnect_room(client_socket, client_address)
 		elif p_no == "004":
 			deregister_client(client_socket, client_address)
+		elif p_no == "005":
+			send_room_info(client_socket, client_address)
 		else:
 			continue
 
@@ -160,6 +162,22 @@ def deregister_client(client_socket, client_address):
 			rooms.pop(room_no)
 	with print_lock:
 		print(f"(user: {user_name}) closed the application.")
+	print_vars()
+
+
+def send_room_info(client_socket, client_address):
+	"""
+	- Sends room info to user
+	"""
+	with print_lock and get_user_name_lock:
+		print(f">>> (user: {get_user_name[client_address]}) requested room info.")
+	with get_room_no_lock:
+		room_no = get_room_no[client_address]
+	room_info = []
+	with rooms_lock and get_user_name_lock:
+		for client in rooms[room_no]:
+			room_info += [get_user_name[client]]
+	socket_interact.send_message(client_socket, 5, str(room_no) + " " + " ".join(room_info))
 	print_vars()
 
 

@@ -3,6 +3,7 @@ HOST = "127.0.0.1"
 CHUNK_SIZE = 1024 * 16
 USERS = 100
 HEADER_SIZE = 3 + 1 + 3
+CLIENT_FILES_LOC = "tests/client_test_data/"
 
 
 """
@@ -13,4 +14,5 @@ HEADER_SIZE = 3 + 1 + 3
 	- 002: join other room
 	- 003: disconnect room
 	- 004: quit application
+	- 005: get room information
 """

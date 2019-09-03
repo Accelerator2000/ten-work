@@ -1,5 +1,7 @@
 import socket
+import subprocess
 import socket_interact
+import shell_interact
 from config import *
 
 
@@ -9,19 +11,21 @@ def main():
 	print(">>> ", end = "")
 	while True:
 		cmd = input().split()
-		try:
-			typ = cmd[0]
-			if typ == "connect" and len(cmd) == 2:
-				join_other_room(conn, int(cmd[1]))
-			elif typ == "disconnect" and len(cmd) == 1:
-				disconnect_room(conn)
-			elif typ == "quit":
-				quit_app(conn)
-				break
-			else:
-				print("Unknown command entered.")
-		except:
-			print("Exception: Unknown command entered.")
+		# ~ try:
+		typ = cmd[0]
+		if typ == "connect" and len(cmd) == 2:
+			join_other_room(conn, int(cmd[1]))
+		elif typ == "disconnect" and len(cmd) == 1:
+			disconnect_room(conn)
+		elif typ == "quit" and len(cmd) == 1:
+			quit_app(conn)
+			break
+		elif typ == "info" and len(cmd) == 1:
+			get_info(conn, user_name)
+		else:
+			print("Unknown command entered.")
+		# ~ except:
+			# ~ print("Exception: Unknown command entered.")
 		print(">>> ", end = "")
 	conn.close()
 
@@ -85,6 +89,28 @@ def quit_app(conn):
 	- Erases user from server
 	"""
 	socket_interact.send_message(conn, 4, "")
+
+
+def get_info(conn, user_name):
+	"""
+	- Asks server for room info
+	- Displays files present on system to user
+	"""
+	socket_interact.send_message(conn, 5, "")
+	p_no, data_sz = socket_interact.receive_header(conn)
+	message = socket_interact.receive_message(conn, data_sz)
+	message = message.split()
+	print(f"User: {user_name}")
+	print(f"Room number: {message[0]}")
+	print(f"Users in room {message[0]}:")
+	for i in range(1, len(message)):
+		print(f"\t{i}) {message[i]}")
+	print(f"Files:")
+	files = shell_interact.run_command("ls " + CLIENT_FILES_LOC)
+	files = files.split("\n")
+	files.pop()
+	for i in range(len(files)):
+		print(f"\t{i + 1}) {files[i]}")
 
 
 if __name__ == "__main__":
