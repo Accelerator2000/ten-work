@@ -12,6 +12,7 @@ def main():
     global user_name
     conn = socket_interact.get_client_socket()
     user_name = register_client(conn)
+    print(f"Hi, {user_name}")
     print(">>> ", end = "")
     while True:
         cmd = input().split()
@@ -37,12 +38,12 @@ def main():
 def register_client(conn):
     """
     - Registers a client with a unique user-name
-        - Returns a unique user-name
+    - Returns a unique user-name
     """
     user_name = input(">>> Enter a user-name: ")
     while user_name_taken(conn, user_name):
         user_name = input(f">>> (user-name: {user_name}) is already taken. Enter a different user-name: ")
-        return user_name
+    return user_name
 
 
 def user_name_taken(conn, user_name):
@@ -75,7 +76,7 @@ def join_other_room(conn, room_no):
 def disconnect_room(conn):
     """
     - Disconnects user from current room (with several users)
-        - Moves him to new empty room
+    - Moves him to new empty room
     """
     socket_interact.send_message(conn, 3, "")
     p_no, data_sz = socket_interact.receive_header(conn)
@@ -98,7 +99,7 @@ def quit_app(conn):
 def get_info(conn, user_name):
     """
     - Asks server for room info
-        - Displays files present on system to user
+    - Displays files present on system to user
     """
     socket_interact.send_message(conn, 5, "")
     p_no, data_sz = socket_interact.receive_header(conn)
@@ -109,12 +110,12 @@ def get_info(conn, user_name):
     print(f"Users in room {message[0]}:")
     for i in range(1, len(message)):
         print(f"\t{i}) {message[i]}")
-        print(f"Files:")
-        files = shell_interact.run_command("ls " + CLIENT_FILES_LOC)
-        files = files.split("\n")
-        files.pop()
-        for i in range(len(files)):
-            print(f"\t{i + 1}) {files[i]}")
+    print(f"Files:")
+    files = shell_interact.run_command("ls " + CLIENT_FILES_LOC)
+    files = files.split("\n")
+    files.pop()
+    for i in range(len(files)):
+        print(f"\t{i + 1}) {files[i]}")
 
 
 if __name__ == "__main__":

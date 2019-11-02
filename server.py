@@ -34,7 +34,7 @@ def handle_client_receive(client_socket, client_address):
     - Handles requests from client
     """
     while True:
-       p_no, data_sz = socket_interact.receive_header(client_socket)
+        p_no, data_sz = socket_interact.receive_header(client_socket)
         if p_no == "001":
             user_name = socket_interact.receive_message(client_socket, data_sz)
             register_client(client_socket, client_address, user_name)
