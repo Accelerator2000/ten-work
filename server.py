@@ -10,6 +10,7 @@ active_users = set()
 get_user_name = dict()
 get_room_no = dict()
 rooms = dict()
+get_client_socket = dict()
 
 print_lock = threading.Lock()
 active_users_lock = threading.Lock()
@@ -17,6 +18,7 @@ get_user_name_lock = threading.Lock()
 get_room_no_lock = threading.Lock()
 rooms_cnt_lock = threading.Lock()
 rooms_lock = threading.Lock()
+get_client_socket_lock = threading.Lock()
 
 
 def main():
@@ -47,6 +49,9 @@ def handle_client_receive(client_socket, client_address):
             deregister_client(client_socket, client_address)
         elif p_no == "005":
             send_room_info(client_socket, client_address)
+        elif p_no == "006":
+            message = socket_interact.receive_message(client_socket, data_sz)
+            send_message(client_socket, client_address, message)
         else:
             continue
 
@@ -75,6 +80,8 @@ def register_client(client_socket, client_address, user_name):
             rooms[rooms_cnt] = [client_address]
         with get_room_no_lock:
             get_room_no[client_address] = rooms_cnt
+        with get_client_socket_lock:
+            get_client_socket[client_address] = client_socket
         socket_interact.send_message(client_socket, 1, str(rooms_cnt))
         with print_lock:
             print(f"(user-name: {user_name}) registered.")
@@ -105,7 +112,7 @@ def join_other_room(client_socket, client_address, desired_room):
                     rooms[desired_room] = [client_address] # Loopback (connect to current room)
         with get_room_no_lock:
             get_room_no[client_address] = desired_room
-        socket_interact.send_message(client_socket, 2, "OK")
+        socket_interact.send_message(client_socket, 2, f"OK {desired_room}")
         with print_lock and get_user_name_lock:
             print(f"(user: {get_user_name[client_address]}) moved to (room: {desired_room}).")
     print_vars()
@@ -178,6 +185,22 @@ def send_room_info(client_socket, client_address):
         for client in rooms[room_no]:
             room_info += [get_user_name[client]]
     socket_interact.send_message(client_socket, 5, str(room_no) + " " + " ".join(room_info))
+    print_vars()
+
+
+def send_message(client_socket, client_address, message):
+    """
+    - Sends message to all users in room
+    """
+    with print_lock and get_user_name_lock and get_room_no_lock:
+        print(f">>> (user: {get_user_name[client_address]}) broadcasted a message in (room: {get_room_no[client_address]})")
+    with get_room_no_lock:
+        room_no = get_room_no[client_address]
+    with rooms_lock and get_client_socket_lock:
+        for client in rooms[room_no]:
+            if client == client_address:
+                continue
+            socket_interact.send_message(get_client_socket[client], 6, message)
     print_vars()
 
 

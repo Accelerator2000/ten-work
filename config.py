@@ -15,4 +15,5 @@ CLIENT_FILES_LOC = "tests/client_test_data/"
     - 003: disconnect room
     - 004: quit application
     - 005: get room information
+    - 006: send message in room
 """

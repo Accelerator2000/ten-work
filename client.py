@@ -1,3 +1,10 @@
+import os
+import queue
+import time
+import readchar
+import sys
+import threading
+import random
 import socket
 import subprocess
 import socket_interact
@@ -6,34 +13,47 @@ from config import *
 
 
 user_name = None
+messages = queue.Queue()
+cmd_entered = ">>> "
 
 
 def main():
     global user_name
     conn = socket_interact.get_client_socket()
     user_name = register_client(conn)
-    print(f"Hi, {user_name}")
-    print(">>> ", end = "")
+    listen_server_thread = threading.Thread(target = listen_server, args = (conn, ), daemon = True)
+    listen_server_thread.start()
+    cmd_output_thread = threading.Thread(target = cmd_output, args = (), daemon = True)
+    cmd_output_thread.start()
+    global cmd_entered
+    char_input = ""
     while True:
-        cmd = input().split()
-        #try:
-        typ = cmd[0]
-        if typ == "connect" and len(cmd) == 2:
-            join_other_room(conn, int(cmd[1]))
-        elif typ == "disconnect" and len(cmd) == 1:
-            disconnect_room(conn)
-        elif typ == "quit" and len(cmd) == 1:
-            quit_app(conn)
-            break
-        elif typ == "info" and len(cmd) == 1:
-            get_info(conn, user_name)
+        cmd_entered = cmd_entered + char_input
+        if cmd_entered.isprintable():
+            print(f"\r{cmd_entered}", end = "")
         else:
-            print("Unknown command entered.")
-        #except:
-        #    print("Exception: Unknown command entered.")
-        print(">>> ", end = "")
-    conn.close()
-
+            #try:
+            cmd = cmd_entered.strip().split()
+            cmd = cmd[1 : ]
+            typ = cmd[0]
+            if typ == "connect" and len(cmd) == 2:
+                join_other_room(conn, int(cmd[1]))
+            elif typ == "disconnect" and len(cmd) == 1:
+                disconnect_room(conn)
+            elif typ == "quit" and len(cmd) == 1:
+                quit_app(conn)
+                conn.close()
+                os._exit(0)
+            elif typ == "info" and len(cmd) == 1:
+                get_info(conn, user_name)
+            elif typ == "send" and len(cmd) > 1:
+                send_message(conn, " ".join(cmd[1 : ]))
+            else:
+                messages.put("Unknown command entered.")
+            cmd_entered = ">>> "
+            print(f"\r\n{cmd_entered}", end = "")
+        char_input = readchar.readkey()
+    
 
 def register_client(conn):
     """
@@ -41,8 +61,10 @@ def register_client(conn):
     - Returns a unique user-name
     """
     user_name = input(">>> Enter a user-name: ")
+    print(user_name)
     while user_name_taken(conn, user_name):
         user_name = input(f">>> (user-name: {user_name}) is already taken. Enter a different user-name: ")
+    print(f"Welcome {user_name}")
     return user_name
 
 
@@ -60,17 +82,74 @@ def user_name_taken(conn, user_name):
         return False
 
 
+def cmd_output():
+    """
+    - Blocks input and prints messages from messages queue
+    """
+    global messages
+    while True:
+        message = messages.get()
+        print(f"\r{' ' * len(cmd_entered)}\r", end = "")
+        print(message)
+        print(f"\r{cmd_entered}", end = "")
+
+
+def listen_server(conn):
+    """
+    - Listens server for any messages
+    - Adds them to messages queue
+    """
+    while True:
+        p_no, data_sz = socket_interact.receive_header(conn)
+        message = socket_interact.receive_message(conn, data_sz)
+        if p_no == "001":
+            assert(false)
+        elif p_no == "002":
+            message = message.split()
+            room_no = int(message[1])
+            if message[0] == "OK":
+                add_log_message(f"Joined (room: {room_no}).")
+            else:
+                add_log_message(f"(room: {room_no}) doesn't exist.")
+        elif p_no == "003":
+            if message == "BAD":
+                add_log_message(f"You can't disconnect from a room with single user.")
+            else:
+                prv_room, new_room = map(int, message.split())
+                add_log_message(f"Disconnected from (room: {prv_room}).")
+                add_log_message(f"Joined (room: {new_room}).")
+        elif p_no == "005":
+            message = message.split()
+            log_message = str()
+            log_message = log_message + f"User: {user_name}\n\r"
+            log_message = log_message + f"Room number: {message[0]}\n\r"
+            log_message = log_message + f"Users in room {message[0]}:\n\r"
+            for i in range(1, len(message)):
+                log_message = log_message + f"\t{i}) {message[i]}\n\r"
+            log_message = log_message + "Files:\n\r"
+            files = shell_interact.run_command("ls " + CLIENT_FILES_LOC)
+            files = files.split("\n")
+            files.pop()
+            for i in range(len(files)):
+                log_message = log_message + f"\t{i + 1}) {files[i]}\n\r"
+            add_log_message(log_message) 
+        elif p_no == "006":
+            messages.put(message)
+
+
+def add_log_message(message):
+    """
+    - Adds message to queue
+    """
+    message = message.strip()
+    messages.put(message)
+
+
 def join_other_room(conn, room_no):
     """
     - Takes user to some other room (Lobby where his friends maybe present :P)
     """
     socket_interact.send_message(conn, 2, str(room_no))
-    p_no, data_sz = socket_interact.receive_header(conn)
-    message = socket_interact.receive_message(conn, data_sz)
-    if message == "OK":
-        print(f"Joined (room: {room_no}).")
-    else:
-        print(f"(room: {room_no}) doesn't exist.")
 
 
 def disconnect_room(conn):
@@ -79,14 +158,6 @@ def disconnect_room(conn):
     - Moves him to new empty room
     """
     socket_interact.send_message(conn, 3, "")
-    p_no, data_sz = socket_interact.receive_header(conn)
-    message = socket_interact.receive_message(conn, data_sz)
-    if message == "BAD":
-        print(f"You can't disconnect from a room with single user.")
-    else:
-        prv_room, new_room = map(int, message.split())
-        print(f"Disconnected from (room: {prv_room}).")
-        print(f"Joined (room: {new_room}).")
 
 
 def quit_app(conn):
@@ -102,20 +173,14 @@ def get_info(conn, user_name):
     - Displays files present on system to user
     """
     socket_interact.send_message(conn, 5, "")
-    p_no, data_sz = socket_interact.receive_header(conn)
-    message = socket_interact.receive_message(conn, data_sz)
-    message = message.split()
-    print(f"User: {user_name}")
-    print(f"Room number: {message[0]}")
-    print(f"Users in room {message[0]}:")
-    for i in range(1, len(message)):
-        print(f"\t{i}) {message[i]}")
-    print(f"Files:")
-    files = shell_interact.run_command("ls " + CLIENT_FILES_LOC)
-    files = files.split("\n")
-    files.pop()
-    for i in range(len(files)):
-        print(f"\t{i + 1}) {files[i]}")
+
+
+def send_message(conn, message):
+    """
+    - Sends message in room
+    """
+    message = "[ " + user_name + " ]: " + message
+    socket_interact.send_message(conn, 6, message)
 
 
 if __name__ == "__main__":
