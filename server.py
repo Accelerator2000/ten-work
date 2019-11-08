@@ -98,7 +98,7 @@ def join_other_room(client_socket, client_address, desired_room):
     if desired_room not in rooms:
         with print_lock:
             print(f"(room: {desired_room}) doesn't exists.")
-        socket_interact.send_message(client_socket, 2, "BAD")
+        socket_interact.send_message(client_socket, 2, f"BAD {desired_room}")
     else:
         with get_room_no_lock:
             prv_room = get_room_no[client_address]

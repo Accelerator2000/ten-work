@@ -28,11 +28,17 @@ def main():
     global cmd_entered
     char_input = ""
     while True:
-        cmd_entered = cmd_entered + char_input
+        print(f"\r{' ' * len(cmd_entered)}", end = "")
+        if char_input == "\x7f":
+            if len(cmd_entered) > 4:
+                cmd_entered = cmd_entered[ : -1]
+        else:
+            cmd_entered = cmd_entered + char_input
         if cmd_entered.isprintable():
             print(f"\r{cmd_entered}", end = "")
         else:
             #try:
+            print(f"\r{cmd_entered}", end = "")
             cmd = cmd_entered.strip().split()
             cmd = cmd[1 : ]
             typ = cmd[0]
