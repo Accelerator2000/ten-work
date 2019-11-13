@@ -37,24 +37,26 @@ def main():
         if cmd_entered.isprintable():
             print(f"\r{cmd_entered}", end = "")
         else:
-            #try:
-            print(f"\r{cmd_entered}", end = "")
-            cmd = cmd_entered.strip().split()
-            cmd = cmd[1 : ]
-            typ = cmd[0]
-            if typ == "connect" and len(cmd) == 2:
-                join_other_room(conn, int(cmd[1]))
-            elif typ == "disconnect" and len(cmd) == 1:
-                disconnect_room(conn)
-            elif typ == "quit" and len(cmd) == 1:
-                quit_app(conn)
-                conn.close()
-                os._exit(0)
-            elif typ == "info" and len(cmd) == 1:
-                get_info(conn, user_name)
-            elif typ == "send" and len(cmd) > 1:
-                send_message(conn, " ".join(cmd[1 : ]))
-            else:
+            try:
+                print(f"\r{cmd_entered}", end = "")
+                cmd = cmd_entered.strip().split()
+                cmd = cmd[1 : ]
+                typ = cmd[0]
+                if typ == "connect" and len(cmd) == 2:
+                    join_other_room(conn, int(cmd[1]))
+                elif typ == "disconnect" and len(cmd) == 1:
+                    disconnect_room(conn)
+                elif typ == "quit" and len(cmd) == 1:
+                    quit_app(conn)
+                    conn.close()
+                    os._exit(0)
+                elif typ == "info" and len(cmd) == 1:
+                    get_info(conn, user_name)
+                elif typ == "send" and len(cmd) > 1:
+                    send_message(conn, " ".join(cmd[1 : ]))
+                else:
+                    messages.put("Unknown command entered.")
+            except:
                 messages.put("Unknown command entered.")
             cmd_entered = ">>> "
             print(f"\r\n{cmd_entered}", end = "")
