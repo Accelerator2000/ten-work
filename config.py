@@ -2,7 +2,7 @@ PORT = 8000
 HOST = "0.0.0.0"
 CHUNK_SIZE = 1024 * 16
 USERS = 100
-HEADER_SIZE = 3 + 1 + 3
+HEADER_SIZE = 3 + 1 + 10 + 1 + 3
 CLIENT_FILES_LOC = "tests/client_test_data/"
 
 
@@ -16,4 +16,5 @@ CLIENT_FILES_LOC = "tests/client_test_data/"
     - 004: quit application
     - 005: get room information
     - 006: send message in room
+    - 007: send file in room
 """

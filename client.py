@@ -52,8 +52,10 @@ def main():
                 os._exit(0)
             elif typ == "info" and len(cmd) == 1:
                 get_info(conn, user_name)
-            elif typ == "send" and len(cmd) > 1:
+            elif typ == "sm" and len(cmd) > 1:
                 send_message(conn, " ".join(cmd[1 : ]))
+            elif typ == "sf" and len(cmd) == 2:
+                send_file(conn, int(cmd[1]))
             else:
                 messages.put("Unknown command entered.")
             cmd_entered = ">>> "
@@ -79,7 +81,7 @@ def user_name_taken(conn, user_name):
     - Return True if user_name is already registered with server else False
     """
     socket_interact.send_message(conn, 1, user_name)
-    p_no, data_sz = socket_interact.receive_header(conn)
+    p_no, data_sz, file_name_size = socket_interact.receive_header(conn)
     message = socket_interact.receive_message(conn, data_sz)
     if message == "BAD":
         return True
@@ -106,8 +108,12 @@ def listen_server(conn):
     - Adds them to messages queue
     """
     while True:
-        p_no, data_sz = socket_interact.receive_header(conn)
-        message = socket_interact.receive_message(conn, data_sz)
+        p_no, data_sz, file_name_size = socket_interact.receive_header(conn)
+        message = None
+        if file_name_size == 0:
+            message = socket_interact.receive_message(conn, data_sz)
+        else:
+            message = socket_interact.receive_raw_data(conn, data_sz)
         if p_no == "001":
             assert(false)
         elif p_no == "002":
@@ -141,6 +147,11 @@ def listen_server(conn):
             add_log_message(log_message) 
         elif p_no == "006":
             messages.put(message)
+        elif p_no == "007":
+            file_name = message[ : file_name_size].decode()
+            file_binary_data = message[file_name_size : ]
+            open(f"{CLIENT_FILES_LOC}/{'_' + file_name}", "wb").write(file_binary_data)
+            add_log_message(f"Received {file_name}.")
 
 
 def add_log_message(message):
@@ -187,6 +198,21 @@ def send_message(conn, message):
     """
     message = "[ " + user_name + " ]: " + message
     socket_interact.send_message(conn, 6, message)
+
+
+def send_file(conn, file_no):
+    """
+    - Sends file to all users in room
+    """
+    files = shell_interact.run_command("ls " + CLIENT_FILES_LOC)
+    files = files.split("\n")
+    files.pop()
+    if file_no > len(files):
+        add_log_message("File doesn't exist")
+    else:
+        file_name = files[file_no - 1]
+        file_data = open(f"{CLIENT_FILES_LOC}/{file_name}", "rb").read()
+        socket_interact.send_message(conn, 7, file_name.encode() + file_data, len(file_name))
 
 
 if __name__ == "__main__":

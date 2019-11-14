@@ -36,7 +36,7 @@ def handle_client_receive(client_socket, client_address):
     - Handles requests from client
     """
     while True:
-        p_no, data_sz = socket_interact.receive_header(client_socket)
+        p_no, data_sz, file_name_size = socket_interact.receive_header(client_socket)
         if p_no == "001":
             user_name = socket_interact.receive_message(client_socket, data_sz)
             register_client(client_socket, client_address, user_name)
@@ -52,6 +52,9 @@ def handle_client_receive(client_socket, client_address):
         elif p_no == "006":
             message = socket_interact.receive_message(client_socket, data_sz)
             send_message(client_socket, client_address, message)
+        elif p_no == "007":
+            message = socket_interact.receive_raw_data(client_socket, data_sz)
+            send_file(client_socket, client_address, file_name_size, message)
         else:
             continue
 
@@ -102,17 +105,18 @@ def join_other_room(client_socket, client_address, desired_room):
     else:
         with get_room_no_lock:
             prv_room = get_room_no[client_address]
-        with rooms_lock:
-            rooms[prv_room].remove(client_address)
-            if len(rooms[prv_room]) == 0:
-                rooms.pop(prv_room)
-                try:
-                    rooms[desired_room] += [client_address]
-                except:
-                    rooms[desired_room] = [client_address] # Loopback (connect to current room)
-        with get_room_no_lock:
-            get_room_no[client_address] = desired_room
-        socket_interact.send_message(client_socket, 2, f"OK {desired_room}")
+        if prv_room != desired_room:
+            with rooms_lock:
+                rooms[prv_room].remove(client_address)
+                if len(rooms[prv_room]) == 0:
+                    rooms.pop(prv_room)
+                    try:
+                        rooms[desired_room] += [client_address]
+                    except:
+                        rooms[desired_room] = [client_address] # Loopback (connect to current room)
+            with get_room_no_lock:
+                get_room_no[client_address] = desired_room
+            socket_interact.send_message(client_socket, 2, f"OK {desired_room}")
         with print_lock and get_user_name_lock:
             print(f"(user: {get_user_name[client_address]}) moved to (room: {desired_room}).")
     print_vars()
@@ -201,6 +205,22 @@ def send_message(client_socket, client_address, message):
             if client == client_address:
                 continue
             socket_interact.send_message(get_client_socket[client], 6, message)
+    print_vars()
+
+
+def send_file(client_socket, client_address, file_name_size, file_info):
+    """
+    - Sends file to all users in room
+    """
+    with print_lock and get_user_name_lock and get_room_no_lock:
+        print(f">>> (user: {get_user_name[client_address]}) sent a file in (room: {get_room_no[client_address]})")
+    with get_room_no_lock:
+        room_no = get_room_no[client_address]
+    with rooms_lock and get_client_socket_lock:
+        for client in rooms[room_no]:
+            if client == client_address:
+                continue
+            socket_interact.send_message(get_client_socket[client], 7, file_info, file_name_size)
     print_vars()
 
 
