@@ -6,7 +6,7 @@ ten-work allows users to share files through LAN on same subnet via centralized 
 - [x] Share files to multiple clients simultaneously (Use threading)
 - [x] Add rooms for sharing for data
 - [x] Create chat system
-- [ ] Share files among multiple computers using central server as relay
+- [x] Share files among multiple computers using central server as relay
 - [ ] Create GUI for application
 - [ ] Create decentralized network to allow P2P data transfer
 
